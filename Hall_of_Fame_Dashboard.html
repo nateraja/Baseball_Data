@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hall of Fame Predictor</title>
+<style>
+:root {
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --ink: #0b0b0b;
+  --ink-2: #52514e;
+  --muted: #6f6d68;
+  --grid: #e1e0d9;
+  --baseline: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --hitter: #2a78d6;
+  --pitcher: #eb6834;
+  --hitter-wash: rgba(42, 120, 214, 0.12);
+  --good: #006300;
+  --good-wash: rgba(12, 163, 12, 0.12);
+  --track: #ecebe6;
+  --shadow: 0 1px 2px rgba(11, 11, 11, 0.04);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --ink: #f0efec;
+    --ink-2: #c3c2b7;
+    --muted: #9a988f;
+    --grid: #2c2c2a;
+    --baseline: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --hitter: #3987e5;
+    --pitcher: #d95926;
+    --hitter-wash: rgba(57, 135, 229, 0.18);
+    --good: #0ca30c;
+    --good-wash: rgba(12, 163, 12, 0.18);
+    --track: #2a2a28;
+    --shadow: none;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --ink: #f0efec;
+  --ink-2: #c3c2b7;
+  --muted: #9a988f;
+  --grid: #2c2c2a;
+  --baseline: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --hitter: #3987e5;
+  --pitcher: #d95926;
+  --hitter-wash: rgba(57, 135, 229, 0.18);
+  --good: #0ca30c;
+  --good-wash: rgba(12, 163, 12, 0.18);
+  --track: #2a2a28;
+  --shadow: none;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 32px 20px 56px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; margin-bottom: 24px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+h1 { font-size: 28px; line-height: 1.2; margin: 0; letter-spacing: -0.01em; }
+.subtitle { color: var(--ink-2); margin: 6px 0 0; max-width: 62ch; }
+.source { color: var(--muted); font-size: 12px; text-align: right; }
+h2 { font-size: 16px; margin: 0; }
+.card-sub { color: var(--muted); font-size: 13px; margin: 2px 0 16px; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+.grid { display: grid; gap: 16px; margin-bottom: 16px; }
+.kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.split { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+@media (max-width: 900px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .two, .split { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 460px) {
+  .kpis { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 24px; }
+  .source { text-align: left; }
+}
+
+/* stat tiles */
+.tile .label { color: var(--ink-2); font-size: 13px; margin: 0; }
+.tile .value { font-size: 34px; font-weight: 600; line-height: 1.15; margin: 6px 0 4px; letter-spacing: -0.02em; }
+.tile .value small { font-size: 16px; font-weight: 500; color: var(--ink-2); letter-spacing: 0; }
+.tile .note { color: var(--muted); font-size: 12.5px; margin: 0; }
+
+/* takeaways */
+.takeaways { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.takeaways li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; }
+.takeaways .num {
+  width: 24px; height: 24px; border-radius: 50%; background: var(--hitter-wash); color: var(--ink);
+  font-size: 12px; font-weight: 600; display: grid; place-items: center; margin-top: 1px;
+}
+.takeaways strong { display: block; }
+.takeaways span { color: var(--ink-2); }
+.reco {
+  margin-top: 16px; padding: 12px 14px; border-radius: 8px; background: var(--hitter-wash); color: var(--ink);
+}
+.reco b { font-weight: 600; }
+
+/* charts */
+.chart { width: 100%; position: relative; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { fill: var(--ink-2); font-size: 12px; }
+.chart .val { fill: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.chart .axis { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.chart .gridline { stroke: var(--grid); stroke-width: 1; }
+.chart .zero { stroke: var(--baseline); stroke-width: 1; }
+.chart .row:hover .bar, .chart .row:focus .bar { filter: brightness(1.12); }
+.chart .row:focus { outline: none; }
+.chart .row:focus-visible .hit { stroke: var(--ink); stroke-width: 1; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--ink-2); font-size: 12.5px; margin: -6px 0 10px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+
+#tooltip {
+  position: fixed; z-index: 10; pointer-events: none; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 12.5px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12); max-width: 260px;
+}
+#tooltip .tt-value { font-size: 15px; font-weight: 600; }
+#tooltip .tt-name { color: var(--ink-2); display: flex; align-items: center; gap: 6px; }
+#tooltip .tt-key { display: inline-block; width: 12px; height: 2px; border-radius: 1px; }
+#tooltip .tt-extra { color: var(--muted); margin-top: 2px; }
+
+/* tables */
+.table-wrap { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: 0 10px 8px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--grid); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.name { font-weight: 600; white-space: nowrap; }
+.role { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-2); white-space: nowrap; }
+.role i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; white-space: nowrap; border: 1px solid var(--border); color: var(--ink-2); }
+.pill.strong { background: var(--hitter-wash); color: var(--ink); border-color: transparent; }
+.pill.good { background: var(--good-wash); color: var(--ink); border-color: transparent; }
+.muted { color: var(--muted); }
+.best { font-weight: 600; }
+
+/* vote meter */
+.meter { position: relative; height: 8px; border-radius: 4px; background: var(--track); min-width: 110px; }
+.meter .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--hitter); }
+.meter .mark { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); border-radius: 1px; }
+.meter-cell { display: grid; grid-template-columns: 44px minmax(110px, 1fr); align-items: center; gap: 10px; }
+
+/* filters */
+.filters { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 16px; }
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; padding: 2px; background: var(--page); }
+.seg button {
+  border: 0; background: transparent; color: var(--ink-2); font: inherit; font-size: 13px;
+  padding: 5px 12px; border-radius: 6px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px var(--border); }
+.seg button:focus-visible { outline: 2px solid var(--hitter); outline-offset: 1px; }
+.filter-label { color: var(--muted); font-size: 12.5px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 8px; background: var(--page); border: 1px solid var(--border); font-size: 13px; }
+.chip b { font-variant-numeric: tabular-nums; }
+.chip .yr { color: var(--muted); font-size: 12px; }
+
+.caveats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; margin: 0; padding: 0; list-style: none; }
+.caveats li { color: var(--ink-2); }
+.caveats li b { color: var(--ink); }
+@media (max-width: 700px) { .caveats { grid-template-columns: minmax(0, 1fr); } }
+footer { color: var(--muted); font-size: 12px; margin-top: 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <p class="eyebrow">Baseball Hall of Fame analysis</p>
+      <h1>Hall of Fame Predictor</h1>
+      <p class="subtitle">Can career stats predict who reaches Cooperstown? Two prediction models trained on 150 years of player data, tested on players they had never seen, and used to rank the next generation of candidates.</p>
+    </div>
+    <div class="source">Data: Lahman Baseball Database, 1871–2025<br>Hall of Fame voting through 2025 (plus 2026 committee)</div>
+  </header>
+
+  <section class="grid kpis" aria-label="Headline numbers">
+    <div class="card tile">
+      <p class="label">Hall of Famers correctly identified</p>
+      <p class="value" id="kpi-found"></p>
+      <p class="note">Players who retired 1986–2010, never seen by the models</p>
+    </div>
+    <div class="card tile">
+      <p class="label">Recent inductees ranked as likely</p>
+      <p class="value" id="kpi-valid"></p>
+      <p class="note">Every player inducted since 2017 who retired after 2010 scored 94% or higher</p>
+    </div>
+    <div class="card tile">
+      <p class="label">Eligible players analyzed</p>
+      <p class="value" id="kpi-eligible"></p>
+      <p class="note" id="kpi-eligible-note"></p>
+    </div>
+    <div class="card tile">
+      <p class="label">Strong future candidates</p>
+      <p class="value" id="kpi-future"></p>
+      <p class="note">Active or not-yet-eligible players scoring 80% or higher</p>
+    </div>
+  </section>
+
+  <section class="grid split">
+    <div class="card">
+      <h2>Key takeaways</h2>
+      <p class="card-sub">What the analysis found</p>
+      <ol class="takeaways">
+        <li><div class="num">1</div><div><strong>Career stats predict induction well.</strong><span>The models found 53 of 54 Hall of Famers among players they had never seen, and ranked every recent inductee near the top.</span></div></li>
+        <li><div class="num">2</div><div><strong>Voters reward long, productive careers plus recognition.</strong><span>RBI, All-Star selections and wins carry the most weight. Reaching 300 wins or 3,000 hits is close to a guaranteed ticket in.</span></div></li>
+        <li><div class="num">3</div><div><strong>The models can't see off-field factors or unusual roles.</strong><span>PEDs, gambling bans and scandals keep statistically qualified players out. Closers and defense-first players are underrated, and "very good" players are often overrated.</span></div></li>
+        <li><div class="num">4</div><div><strong>24 strong candidates are coming.</strong><span>Near-locks include Albert Pujols, Miguel Cabrera, Mike Trout, Clayton Kershaw, Justin Verlander and Max Scherzer. On the current ballot, Carlos Beltrán is closest (70.3% in 2025).</span></div></li>
+      </ol>
+      <div class="reco"><b>Recommendation:</b> Use the simpler logistic regression model with an 80% cutoff. Gradient boosting was not more accurate, and logistic regression is easier to explain. Expect roughly half of the players it flags to be inducted.</div>
+    </div>
+    <div class="card">
+      <h2>Milestones that open the door</h2>
+      <p class="card-sub">Share of eligible players reaching each milestone who were inducted</p>
+      <div class="chart" id="chart-milestones" role="img" aria-label="Induction rate by career milestone"></div>
+      <p class="card-sub" style="margin:12px 0 0">Almost every eligible player who reached a major milestone but isn't in is linked to PEDs or was banned (Bonds, Clemens, A-Rod, Pete Rose).</p>
+    </div>
+  </section>
+
+  <section class="grid two">
+    <div class="card">
+      <h2>What the hitter model weighs</h2>
+      <p class="card-sub">Logistic regression weights. Longer bar = bigger effect on the score; left of zero = lowers it</p>
+      <div class="chart" id="chart-coef-h" role="img" aria-label="Hitter model weights"></div>
+      <p class="card-sub" style="margin:12px 0 0">Home runs come out negative because they overlap with RBI and slugging, which get the credit. Homers alone don't earn induction.</p>
+    </div>
+    <div class="card">
+      <h2>What the pitcher model weighs</h2>
+      <p class="card-sub">Logistic regression weights. Longer bar = bigger effect on the score; left of zero = lowers it</p>
+      <div class="chart" id="chart-coef-p" role="img" aria-label="Pitcher model weights"></div>
+      <p class="card-sub" style="margin:12px 0 0">Wins dominate. Losses come out negative because, at equal wins, a weaker win-loss record hurts.</p>
+    </div>
+  </section>
+
+  <section class="grid split">
+    <div class="card">
+      <h2>Model accuracy on unseen players</h2>
+      <p class="card-sub">Tested on players who retired 1986–2010, using the recommended 80% cutoff</p>
+      <div class="table-wrap">
+        <table id="table-models">
+          <thead><tr><th>Players</th><th>Model</th><th class="n">Hall of Famers found</th><th class="n">False alarms</th><th class="n">Ranking quality</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="card-sub" style="margin:12px 0 0">Ranking quality is PR-AUC, where 1.0 is perfect. The two models are essentially tied overall. Boosting gives fewer false alarms but misses more Hall of Famers.</p>
+    </div>
+    <div class="card">
+      <h2>Recent inductees the models never saw</h2>
+      <p class="card-sub">Retired after 2010 and since inducted, with their model score</p>
+      <div class="chips" id="validation"></div>
+    </div>
+  </section>
+
+  <section class="card" style="margin-bottom:16px">
+    <h2>Ballot watch: retired 2011–2020, not yet inducted</h2>
+    <p class="card-sub">Highest model scores compared with the latest writers' vote. Players need 75% (marked by the vertical line) to be elected.</p>
+    <div class="table-wrap">
+      <table id="table-watch">
+        <thead><tr><th>Player</th><th>Role</th><th class="n">Model score</th><th class="n">Boosting score</th><th>Latest vote share</th><th class="n">Ballots</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <p class="card-sub" style="margin:12px 0 0">Beltrán and Andruw Jones are climbing toward 75%. Most other high scorers show the models' main weakness: rating long, very good careers like Hall of Fame careers.</p>
+  </section>
+
+  <section class="card" style="margin-bottom:16px">
+    <h2>Future candidates: active and not yet eligible</h2>
+    <p class="card-sub">Model scores based on career stats so far. For active players, read the score as "if they retired today."</p>
+    <div class="filters" role="group" aria-label="Filter candidates">
+      <span class="filter-label">Show</span>
+      <div class="seg" id="filter-role">
+        <button type="button" data-value="all" aria-pressed="true">All</button>
+        <button type="button" data-value="Hitter" aria-pressed="false">Hitters</button>
+        <button type="button" data-value="Pitcher" aria-pressed="false">Pitchers</button>
+      </div>
+      <div class="seg" id="filter-tier">
+        <button type="button" data-value="strong" aria-pressed="true">Strong candidates (80%+)</button>
+        <button type="button" data-value="all" aria-pressed="false">All listed</button>
+      </div>
+    </div>
+    <div class="legend" id="legend-future">
+      <span><i style="background:var(--hitter)"></i>Hitter</span>
+      <span><i style="background:var(--pitcher)"></i>Pitcher</span>
+    </div>
+    <div class="chart" id="chart-future" role="img" aria-label="Future candidate scores"></div>
+    <div class="table-wrap" style="margin-top:20px">
+      <table id="table-future">
+        <thead><tr><th>Player</th><th>Role</th><th>Status</th><th class="n">Seasons</th><th>Key career stats</th><th class="n">All-Star</th><th class="n">Model score</th><th class="n">Boosting score</th><th>Tier</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Limits to keep in mind</h2>
+    <p class="card-sub">Why a model score is a guide, not a forecast</p>
+    <ul class="caveats">
+      <li><b>Off-field factors are invisible.</b> PED links, gambling, scandals and reputation have kept statistically qualified players out. PED-linked and banned players were removed before training.</li>
+      <li><b>Some roles are misjudged.</b> Closers (low win totals), defense-first players like Andruw Jones, and two-way star Shohei Ohtani don't fit career-total stats well.</li>
+      <li><b>Active careers are unfinished.</b> Young stars such as Juan Soto and Ronald Acuña Jr. will likely rise as their totals grow.</li>
+      <li><b>"Not inducted" isn't always final.</b> Committees still elect older players decades later, as with Dick Allen (2025) and Jeff Kent (2026).</li>
+      <li><b>Negro League stars were excluded.</b> Their records are incomplete, so their stats understate how good they were.</li>
+      <li><b>Scores are rankings, not exact odds.</b> In testing, about 56% of players scoring 80%+ were actually inducted.</li>
+    </ul>
+  </section>
+
+  <footer>
+    Method: logistic regression and gradient boosting, trained separately for hitters and pitchers on players who retired by 1985, tested on players who retired 1986–2010. Eligibility: 10+ MLB seasons and 5+ years retired. Source notebook: Hall_of_Fame.ipynb.
+  </footer>
+</div>
+<div id="tooltip" hidden></div>
+
+<script>
+const DATA = {"kpi": {"players": 24011, "eligible": 3666, "inducted": 278, "future_strong": 24}, "milestones": [{"name": "3,000 hits", "players": 31, "inducted": 28}, {"name": "500 home runs", "players": 26, "inducted": 19}, {"name": ".300 average (5,000+ AB)", "players": 132, "inducted": 87}, {"name": "300 wins", "players": 24, "inducted": 23}, {"name": "3,000 strikeouts", "players": 17, "inducted": 15}, {"name": "300 saves", "players": 28, "inducted": 8}], "comparison": [{"group": "Hitters", "model": "Logistic regression", "prauc": 0.911, "hof": 35, "found80": 35, "fa80": 28, "found50": 35, "fa50": 64}, {"group": "Hitters", "model": "Gradient boosting", "prauc": 0.906, "hof": 35, "found80": 32, "fa80": 14, "found50": 34, "fa50": 29}, {"group": "Pitchers", "model": "Logistic regression", "prauc": 0.902, "hof": 19, "found80": 18, "fa80": 14, "found50": 18, "fa50": 24}, {"group": "Pitchers", "model": "Gradient boosting", "prauc": 0.911, "hof": 19, "found80": 16, "fa80": 7, "found50": 18, "fa50": 10}], "coef_hitters": [{"stat": "RBI", "value": 1.11}, {"stat": "On-base %", "value": 0.71}, {"stat": "All-Star selections", "value": 0.62}, {"stat": "Slugging %", "value": 0.6}, {"stat": "Seasons played", "value": 0.57}, {"stat": "Batting average", "value": 0.53}, {"stat": "Runs", "value": 0.5}, {"stat": "MVP awards", "value": 0.41}, {"stat": "Hits", "value": 0.33}, {"stat": "Stolen bases", "value": 0.32}, {"stat": "Gold Gloves", "value": 0.21}, {"stat": "Home runs", "value": -0.84}], "coef_pitchers": [{"stat": "Wins", "value": 3.67}, {"stat": "Innings pitched", "value": 0.68}, {"stat": "Seasons played", "value": 0.66}, {"stat": "Strikeouts", "value": 0.58}, {"stat": "Saves", "value": 0.5}, {"stat": "All-Star selections", "value": 0.27}, {"stat": "Shutouts", "value": 0.23}, {"stat": "Cy Young awards", "value": 0.13}, {"stat": "WHIP", "value": 0.06}, {"stat": "ERA", "value": -0.92}, {"stat": "Losses", "value": -1.97}], "validation": [{"name": "Derek Jeter", "role": "Hitter", "score": 1.0, "year": 2020}, {"name": "Ivan Rodriguez", "role": "Hitter", "score": 1.0, "year": 2017}, {"name": "Mariano Rivera", "role": "Pitcher", "score": 1.0, "year": 2019}, {"name": "Ichiro Suzuki", "role": "Hitter", "score": 0.999, "year": 2025}, {"name": "Chipper Jones", "role": "Hitter", "score": 0.998, "year": 2018}, {"name": "CC Sabathia", "role": "Pitcher", "score": 0.995, "year": 2025}, {"name": "Vladimir Guerrero", "role": "Hitter", "score": 0.994, "year": 2018}, {"name": "Todd Helton", "role": "Hitter", "score": 0.989, "year": 2024}, {"name": "Roy Halladay", "role": "Pitcher", "score": 0.984, "year": 2019}, {"name": "David Ortiz", "role": "Hitter", "score": 0.982, "year": 2022}, {"name": "Joe Mauer", "role": "Hitter", "score": 0.975, "year": 2024}, {"name": "Scott Rolen", "role": "Hitter", "score": 0.97, "year": 2023}, {"name": "Adrian Beltre", "role": "Hitter", "score": 0.966, "year": 2024}, {"name": "Jim Thome", "role": "Hitter", "score": 0.943, "year": 2018}], "watch": [{"name": "Omar Vizquel", "role": "Hitter", "last_year": 2012, "score": 0.991, "boost": 0.888, "ballots": 8, "vote_year": 2025, "vote_share": 17.8}, {"name": "Carlos Beltran", "role": "Hitter", "last_year": 2017, "score": 0.988, "boost": 0.996, "ballots": 3, "vote_year": 2025, "vote_share": 70.3}, {"name": "Bobby Abreu", "role": "Hitter", "last_year": 2014, "score": 0.974, "boost": 0.797, "ballots": 6, "vote_year": 2025, "vote_share": 19.5}, {"name": "Jamie Moyer", "role": "Pitcher", "last_year": 2012, "score": 0.962, "boost": 0.99, "ballots": 1, "vote_year": 2018, "vote_share": 2.4}, {"name": "Torii Hunter", "role": "Hitter", "last_year": 2015, "score": 0.954, "boost": 0.795, "ballots": 5, "vote_year": 2025, "vote_share": 5.1}, {"name": "Bartolo Colon", "role": "Pitcher", "last_year": 2018, "score": 0.946, "boost": 0.965, "ballots": 1, "vote_year": 2024, "vote_share": 1.3}, {"name": "Tim Hudson", "role": "Pitcher", "last_year": 2015, "score": 0.937, "boost": 0.541, "ballots": 2, "vote_year": 2022, "vote_share": 3.0}, {"name": "Johnny Damon", "role": "Hitter", "last_year": 2012, "score": 0.906, "boost": 0.735, "ballots": 1, "vote_year": 2018, "vote_share": 1.9}, {"name": "Matt Holliday", "role": "Hitter", "last_year": 2018, "score": 0.902, "boost": 0.816, "ballots": 1, "vote_year": 2024, "vote_share": 1.0}, {"name": "Jimmy Rollins", "role": "Hitter", "last_year": 2016, "score": 0.898, "boost": 0.323, "ballots": 4, "vote_year": 2025, "vote_share": 18.0}, {"name": "Lance Berkman", "role": "Hitter", "last_year": 2013, "score": 0.894, "boost": 0.989, "ballots": 1, "vote_year": 2019, "vote_share": 1.2}, {"name": "Magglio Ordonez", "role": "Hitter", "last_year": 2011, "score": 0.886, "boost": 0.917, "ballots": 1, "vote_year": 2017, "vote_share": 0.7}, {"name": "Dustin Pedroia", "role": "Hitter", "last_year": 2019, "score": 0.874, "boost": 0.4, "ballots": 1, "vote_year": 2025, "vote_share": 11.9}, {"name": "Joe Nathan", "role": "Pitcher", "last_year": 2016, "score": 0.849, "boost": 0.787, "ballots": 1, "vote_year": 2022, "vote_share": 4.3}, {"name": "Francisco Rodriguez", "role": "Pitcher", "last_year": 2017, "score": 0.806, "boost": 0.928, "ballots": 3, "vote_year": 2025, "vote_share": 10.2}, {"name": "Andruw Jones", "role": "Hitter", "last_year": 2012, "score": 0.773, "boost": 0.649, "ballots": 8, "vote_year": 2025, "vote_share": 66.2}, {"name": "Mark Buehrle", "role": "Pitcher", "last_year": 2015, "score": 0.601, "boost": 0.268, "ballots": 5, "vote_year": 2025, "vote_share": 11.4}, {"name": "Felix Hernandez", "role": "Pitcher", "last_year": 2019, "score": 0.584, "boost": 0.492, "ballots": 1, "vote_year": 2025, "vote_share": 20.6}, {"name": "Johan Santana", "role": "Pitcher", "last_year": 2012, "score": 0.452, "boost": 0.643, "ballots": 1, "vote_year": 2018, "vote_share": 2.4}, {"name": "Cole Hamels", "role": "Pitcher", "last_year": 2020, "score": 0.44, "boost": 0.709, "ballots": 0, "vote_year": null, "vote_share": null}, {"name": "Jonathan Papelbon", "role": "Pitcher", "last_year": 2016, "score": 0.44, "boost": 0.149, "ballots": 1, "vote_year": 2022, "vote_share": 1.3}], "future": [{"name": "Albert Pujols", "role": "Hitter", "active": false, "last_year": 2022, "seasons": 22, "score": 1.0, "boost": 1.0, "tier": "Strong candidate", "allstar": 11, "stat1": 3384, "stat2": 703, "stat3": 0.296, "awards": 3}, {"name": "Miguel Cabrera", "role": "Hitter", "active": false, "last_year": 2023, "seasons": 21, "score": 1.0, "boost": 0.999, "tier": "Strong candidate", "allstar": 12, "stat1": 3174, "stat2": 511, "stat3": 0.306, "awards": 2}, {"name": "Mike Trout", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 15, "score": 0.998, "boost": 0.998, "tier": "Strong candidate", "allstar": 11, "stat1": 1754, "stat2": 404, "stat3": 0.294, "awards": 3}, {"name": "Freddie Freeman", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 16, "score": 0.991, "boost": 0.991, "tier": "Strong candidate", "allstar": 9, "stat1": 2431, "stat2": 367, "stat3": 0.3, "awards": 1}, {"name": "Aaron Judge", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 10, "score": 0.979, "boost": 0.968, "tier": "Strong candidate", "allstar": 7, "stat1": 1205, "stat2": 368, "stat3": 0.294, "awards": 3}, {"name": "Paul Goldschmidt", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 15, "score": 0.977, "boost": 0.887, "tier": "Strong candidate", "allstar": 7, "stat1": 2190, "stat2": 372, "stat3": 0.288, "awards": 1}, {"name": "Joey Votto", "role": "Hitter", "active": false, "last_year": 2023, "seasons": 17, "score": 0.974, "boost": 0.925, "tier": "Strong candidate", "allstar": 6, "stat1": 2135, "stat2": 356, "stat3": 0.294, "awards": 1}, {"name": "Jose Altuve", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 15, "score": 0.973, "boost": 0.979, "tier": "Strong candidate", "allstar": 9, "stat1": 2388, "stat2": 255, "stat3": 0.303, "awards": 1}, {"name": "Bryce Harper", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 14, "score": 0.971, "boost": 0.946, "tier": "Strong candidate", "allstar": 8, "stat1": 1801, "stat2": 363, "stat3": 0.28, "awards": 2}, {"name": "Mookie Betts", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 12, "score": 0.958, "boost": 0.923, "tier": "Strong candidate", "allstar": 8, "stat1": 1767, "stat2": 291, "stat3": 0.29, "awards": 1}, {"name": "Shohei Ohtani", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 8, "score": 0.957, "boost": 0.056, "tier": "Strong candidate", "allstar": 5, "stat1": 1050, "stat2": 280, "stat3": 0.282, "awards": 4}, {"name": "Yadier Molina", "role": "Hitter", "active": false, "last_year": 2022, "seasons": 19, "score": 0.941, "boost": 0.885, "tier": "Strong candidate", "allstar": 10, "stat1": 2168, "stat2": 176, "stat3": 0.277, "awards": 0}, {"name": "Andrew McCutchen", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 17, "score": 0.911, "boost": 0.455, "tier": "Strong candidate", "allstar": 5, "stat1": 2266, "stat2": 332, "stat3": 0.271, "awards": 1}, {"name": "Nolan Arenado", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 13, "score": 0.855, "boost": 0.826, "tier": "Strong candidate", "allstar": 8, "stat1": 1921, "stat2": 353, "stat3": 0.282, "awards": 0}, {"name": "Buster Posey", "role": "Hitter", "active": false, "last_year": 2021, "seasons": 12, "score": 0.762, "boost": 0.078, "tier": "Borderline", "allstar": 7, "stat1": 1500, "stat2": 158, "stat3": 0.302, "awards": 1}, {"name": "Christian Yelich", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 13, "score": 0.733, "boost": 0.267, "tier": "Borderline", "allstar": 3, "stat1": 1741, "stat2": 233, "stat3": 0.285, "awards": 1}, {"name": "Jose Ramirez", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 13, "score": 0.582, "boost": 0.406, "tier": "Borderline", "allstar": 7, "stat1": 1668, "stat2": 285, "stat3": 0.279, "awards": 0}, {"name": "Manny Machado", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 14, "score": 0.53, "boost": 0.654, "tier": "Borderline", "allstar": 7, "stat1": 2069, "stat2": 369, "stat3": 0.279, "awards": 0}, {"name": "Michael Brantley", "role": "Hitter", "active": false, "last_year": 2023, "seasons": 15, "score": 0.487, "boost": 0.049, "tier": "Long shot (so far)", "allstar": 5, "stat1": 1656, "stat2": 129, "stat3": 0.298, "awards": 0}, {"name": "Giancarlo Stanton", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 16, "score": 0.439, "boost": 0.374, "tier": "Long shot (so far)", "allstar": 5, "stat1": 1619, "stat2": 453, "stat3": 0.258, "awards": 1}, {"name": "DJ LeMahieu", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 15, "score": 0.419, "boost": 0.055, "tier": "Long shot (so far)", "allstar": 3, "stat1": 1772, "stat2": 126, "stat3": 0.289, "awards": 0}, {"name": "Charlie Blackmon", "role": "Hitter", "active": false, "last_year": 2024, "seasons": 14, "score": 0.409, "boost": 0.343, "tier": "Long shot (so far)", "allstar": 4, "stat1": 1805, "stat2": 227, "stat3": 0.293, "awards": 0}, {"name": "J. D. Martinez", "role": "Hitter", "active": false, "last_year": 2024, "seasons": 14, "score": 0.4, "boost": 0.411, "tier": "Long shot (so far)", "allstar": 6, "stat1": 1741, "stat2": 331, "stat3": 0.283, "awards": 0}, {"name": "Ronald Acuña", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 8, "score": 0.37, "boost": 0.002, "tier": "Long shot (so far)", "allstar": 5, "stat1": 913, "stat2": 186, "stat3": 0.289, "awards": 1}, {"name": "Xander Bogaerts", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 13, "score": 0.316, "boost": 0.068, "tier": "Long shot (so far)", "allstar": 4, "stat1": 1822, "stat2": 197, "stat3": 0.287, "awards": 0}, {"name": "Evan Longoria", "role": "Hitter", "active": false, "last_year": 2023, "seasons": 16, "score": 0.315, "boost": 0.091, "tier": "Long shot (so far)", "allstar": 3, "stat1": 1930, "stat2": 342, "stat3": 0.264, "awards": 0}, {"name": "Jose Abreu", "role": "Hitter", "active": false, "last_year": 2024, "seasons": 11, "score": 0.31, "boost": 0.069, "tier": "Long shot (so far)", "allstar": 3, "stat1": 1587, "stat2": 263, "stat3": 0.283, "awards": 1}, {"name": "Justin Turner", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 17, "score": 0.305, "boost": 0.101, "tier": "Long shot (so far)", "allstar": 2, "stat1": 1617, "stat2": 201, "stat3": 0.283, "awards": 0}, {"name": "Ryan Zimmerman", "role": "Hitter", "active": false, "last_year": 2021, "seasons": 16, "score": 0.301, "boost": 0.068, "tier": "Long shot (so far)", "allstar": 2, "stat1": 1846, "stat2": 284, "stat3": 0.277, "awards": 0}, {"name": "Juan Soto", "role": "Hitter", "active": true, "last_year": 2025, "seasons": 8, "score": 0.242, "boost": 0.056, "tier": "Long shot (so far)", "allstar": 4, "stat1": 1086, "stat2": 244, "stat3": 0.282, "awards": 0}, {"name": "Clayton Kershaw", "role": "Pitcher", "active": true, "last_year": 2025, "seasons": 18, "score": 1.0, "boost": 0.997, "tier": "Strong candidate", "allstar": 11, "stat1": 223, "stat2": 3052, "stat3": 2.53, "awards": 3, "saves": 0}, {"name": "Justin Verlander", "role": "Pitcher", "active": true, "last_year": 2025, "seasons": 20, "score": 1.0, "boost": 0.998, "tier": "Strong candidate", "allstar": 9, "stat1": 266, "stat2": 3553, "stat3": 3.32, "awards": 3, "saves": 0}, {"name": "Max Scherzer", "role": "Pitcher", "active": true, "last_year": 2025, "seasons": 18, "score": 0.999, "boost": 0.996, "tier": "Strong candidate", "allstar": 8, "stat1": 221, "stat2": 3489, "stat3": 3.22, "awards": 3, "saves": 0}, {"name": "Zack Greinke", "role": "Pitcher", "active": false, "last_year": 2023, "seasons": 20, "score": 0.983, "boost": 0.935, "tier": "Strong candidate", "allstar": 4, "stat1": 225, "stat2": 2979, "stat3": 3.49, "awards": 1, "saves": 1}, {"name": "Kenley Jansen", "role": "Pitcher", "active": true, "last_year": 2025, "seasons": 16, "score": 0.943, "boost": 0.926, "tier": "Strong candidate", "allstar": 4, "stat1": 54, "stat2": 1278, "stat3": 2.57, "awards": 0, "saves": 476}, {"name": "Craig Kimbrel", "role": "Pitcher", "active": true, "last_year": 2025, "seasons": 16, "score": 0.941, "boost": 0.977, "tier": "Strong candidate", "allstar": 9, "stat1": 56, "stat2": 1282, "stat3": 2.58, "awards": 0, "saves": 440}, {"name": "Aroldis Chapman", "role": "Pitcher", "active": true, "last_year": 2025, "seasons": 16, "score": 0.881, "boost": 0.977, "tier": "Strong candidate", "allstar": 8, "stat1": 60, "stat2": 1331, "stat3": 2.52, "awards": 0, "saves": 367}, {"name": "Jon Lester", "role": "Pitcher", "active": false, "last_year": 2021, "seasons": 16, "score": 0.866, "boost": 0.475, "tier": "Strong candidate", "allstar": 5, "stat1": 200, "stat2": 2488, "stat3": 3.66, "awards": 0, "saves": 0}, {"name": "Chris Sale", "role": "Pitcher", "active": true, "last_year": 2025, "seasons": 15, "score": 0.847, "boost": 0.976, "tier": "Strong candidate", "allstar": 9, "stat1": 145, "stat2": 2579, "stat3": 3.01, "awards": 1, "saves": 12}, {"name": "Adam Wainwright", "role": "Pitcher", "active": false, "last_year": 2023, "seasons": 18, "score": 0.827, "boost": 0.486, "tier": "Strong candidate", "allstar": 3, "stat1": 200, "stat2": 2202, "stat3": 3.53, "awards": 0, "saves": 3}, {"name": "David Price", "role": "Pitcher", "active": false, "last_year": 2022, "seasons": 14, "score": 0.661, "boost": 0.847, "tier": "Borderline", "allstar": 5, "stat1": 157, "stat2": 2076, "stat3": 3.32, "awards": 1, "saves": 3}, {"name": "Gerrit Cole", "role": "Pitcher", "active": false, "last_year": 2024, "seasons": 12, "score": 0.619, "boost": 0.983, "tier": "Borderline", "allstar": 6, "stat1": 153, "stat2": 2251, "stat3": 3.18, "awards": 1, "saves": 0}, {"name": "Jacob deGrom", "role": "Pitcher", "active": true, "last_year": 2025, "seasons": 12, "score": 0.192, "boost": 0.785, "tier": "Long shot (so far)", "allstar": 5, "stat1": 96, "stat2": 1851, "stat3": 2.57, "awards": 2, "saves": 0}]};
+
+const fmtPct = (v, digits = 0) => (v * 100).toFixed(digits) + "%";
+const fmtInt = v => v.toLocaleString("en-US");
+const roleColor = role => role === "Pitcher" ? "var(--pitcher)" : "var(--hitter)";
+const NS = "http://www.w3.org/2000/svg";
+
+function el(tag, attrs = {}, text) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function svgEl(tag, attrs = {}, text) {
+  const node = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+/* ---------- tooltip ---------- */
+const tip = document.getElementById("tooltip");
+function showTip(evt, content) {
+  tip.replaceChildren();
+  tip.append(el("div", { class: "tt-value" }, content.value));
+  const name = el("div", { class: "tt-name" });
+  if (content.color) {
+    const key = el("span", { class: "tt-key" });
+    key.style.background = content.color;
+    name.append(key);
+  }
+  name.append(document.createTextNode(content.name));
+  tip.append(name);
+  (content.extra || []).forEach(line => tip.append(el("div", { class: "tt-extra" }, line)));
+  tip.hidden = false;
+  let x, y;
+  if (evt.clientX !== undefined && evt.type !== "focus") { x = evt.clientX; y = evt.clientY; }
+  else { const r = evt.currentTarget.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top; }
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let left = x + 14, top = y - h - 10;
+  if (left + w > window.innerWidth - 8) left = x - w - 14;
+  if (left < 8) left = 8;
+  if (top < 8) top = y + 16;
+  tip.style.left = left + "px";
+  tip.style.top = top + "px";
+}
+function hideTip() { tip.hidden = true; }
+
+/* ---------- horizontal bar chart ---------- */
+// bar path with a 4px rounded data end and a square baseline end
+function barPath(x0, x1, y, h, r = 4) {
+  const w = Math.abs(x1 - x0);
+  r = Math.min(r, w / 2, h / 2);
+  if (x1 >= x0) {
+    return `M${x0},${y}H${x1 - r}Q${x1},${y} ${x1},${y + r}V${y + h - r}Q${x1},${y + h} ${x1 - r},${y + h}H${x0}Z`;
+  }
+  return `M${x0},${y}H${x1 + r}Q${x1},${y} ${x1},${y + r}V${y + h - r}Q${x1},${y + h} ${x1 + r},${y + h}H${x0}Z`;
+}
+
+function hbar(container, rows, opts) {
+  const width = Math.max(container.clientWidth, 260);
+  const rowH = opts.rowH || 30;
+  const barH = Math.min(opts.barH || 18, 24);
+  const labelW = Math.min(opts.labelW || 150, width * 0.42);
+  const valueW = opts.valueW || 46;
+  const top = opts.ticks ? 4 : 0;
+  const bottom = opts.ticks ? 22 : 4;
+  const height = rows.length * rowH + top + bottom;
+  const min = opts.min !== undefined ? opts.min : Math.min(0, ...rows.map(r => r.value));
+  const max = opts.max !== undefined ? opts.max : Math.max(...rows.map(r => r.value));
+  const plotL = labelW + (min < 0 ? valueW : 8);
+  const plotR = width - valueW;
+  const sx = v => plotL + (v - min) / (max - min) * (plotR - plotL);
+
+  const svg = svgEl("svg", { viewBox: `0 0 ${width} ${height}`, height });
+  if (opts.ticks) {
+    opts.ticks.forEach(t => {
+      svg.append(svgEl("line", { class: "gridline", x1: sx(t), x2: sx(t), y1: top, y2: height - bottom }));
+      svg.append(svgEl("text", { class: "axis", x: sx(t), y: height - 6, "text-anchor": "middle" }, opts.tickFormat ? opts.tickFormat(t) : t));
+    });
+  }
+  const zeroX = sx(Math.max(min, 0));
+  rows.forEach((row, i) => {
+    const y = top + i * rowH;
+    const g = svgEl("g", { class: "row", tabindex: "0", role: "listitem" });
+    g.append(svgEl("rect", { class: "hit", x: 0, y, width, height: rowH, fill: "transparent" }));
+    g.append(svgEl("text", { x: labelW - 4, y: y + rowH / 2 + 4, "text-anchor": "end" }, row.label));
+    const x1 = sx(row.value);
+    g.append(svgEl("path", { class: "bar", d: barPath(zeroX, x1, y + (rowH - barH) / 2, barH), fill: row.color }));
+    const neg = row.value < 0;
+    g.append(svgEl("text", { class: "val", x: neg ? x1 - 6 : x1 + 6, y: y + rowH / 2 + 4, "text-anchor": neg ? "end" : "start" }, opts.format(row.value)));
+    const tipContent = { value: opts.format(row.value), name: row.label, color: row.color, extra: row.extra };
+    g.addEventListener("pointermove", e => showTip(e, tipContent));
+    g.addEventListener("pointerleave", hideTip);
+    g.addEventListener("focus", e => showTip(e, tipContent));
+    g.addEventListener("blur", hideTip);
+    svg.append(g);
+  });
+  svg.append(svgEl("line", { class: "zero", x1: zeroX, x2: zeroX, y1: top, y2: height - bottom }));
+  svg.setAttribute("role", "list");
+  container.replaceChildren(svg);
+}
+
+/* ---------- KPIs ---------- */
+function renderKpis() {
+  const cmp = DATA.comparison.filter(c => c.model === "Logistic regression");
+  const found = cmp.reduce((s, c) => s + c.found80, 0);
+  const total = cmp.reduce((s, c) => s + c.hof, 0);
+  const kFound = document.getElementById("kpi-found");
+  kFound.replaceChildren(document.createTextNode(`${found} `), el("small", {}, `of ${total}`));
+  const v = DATA.validation;
+  const kValid = document.getElementById("kpi-valid");
+  kValid.replaceChildren(document.createTextNode(`${v.filter(d => d.score >= 0.8).length} `), el("small", {}, `of ${v.length}`));
+  document.getElementById("kpi-eligible").textContent = fmtInt(DATA.kpi.eligible);
+  document.getElementById("kpi-eligible-note").textContent =
+    `${fmtInt(DATA.kpi.inducted)} inducted (${fmtPct(DATA.kpi.inducted / DATA.kpi.eligible, 1)}), from ${fmtInt(DATA.kpi.players)} players in history`;
+  document.getElementById("kpi-future").textContent = DATA.kpi.future_strong;
+}
+
+/* ---------- static charts ---------- */
+function renderMilestones() {
+  const rows = DATA.milestones.map(m => {
+    const pitch = /wins|strikeouts|saves/.test(m.name);
+    return {
+      label: m.name, value: m.inducted / m.players, color: pitch ? "var(--pitcher)" : "var(--hitter)",
+      extra: [`${m.inducted} of ${m.players} players inducted`, pitch ? "Pitching milestone" : "Hitting milestone"],
+    };
+  }).sort((a, b) => b.value - a.value);
+  const box = document.getElementById("chart-milestones");
+  if (!box.previousElementSibling.classList.contains("legend")) {
+    const legend = el("div", { class: "legend" });
+    [["Hitting milestone", "var(--hitter)"], ["Pitching milestone", "var(--pitcher)"]].forEach(([t, c]) => {
+      const s = el("span"); const i = el("i"); i.style.background = c; s.append(i, document.createTextNode(t)); legend.append(s);
+    });
+    box.before(legend);
+  }
+  hbar(box, rows, { max: 1, min: 0, labelW: 150, format: v => fmtPct(v), ticks: [0, 0.25, 0.5, 0.75, 1], tickFormat: t => fmtPct(t) });
+}
+
+function renderCoefs(id, data, color) {
+  const rows = data.map(d => ({ label: d.stat, value: d.value, color, extra: [d.value >= 0 ? "Raises the Hall of Fame score" : "Lowers the score, all else equal"] }));
+  const lim = Math.max(...data.map(d => Math.abs(d.value)));
+  hbar(document.getElementById(id), rows, { min: Math.min(0, ...data.map(d => d.value)) * 1.05, max: lim * 1.02, labelW: 140, rowH: 26, barH: 14, format: v => (v > 0 ? "+" : "") + v.toFixed(2) });
+}
+
+/* ---------- tables ---------- */
+function renderModelTable() {
+  const tbody = document.querySelector("#table-models tbody");
+  tbody.replaceChildren();
+  ["Hitters", "Pitchers"].forEach(group => {
+    const rows = DATA.comparison.filter(c => c.group === group);
+    const bestPr = Math.max(...rows.map(r => r.prauc));
+    rows.forEach((r, i) => {
+      const tr = el("tr");
+      tr.append(el("td", { class: "name" }, i === 0 ? group : ""));
+      tr.append(el("td", {}, r.model + (r.model === "Logistic regression" ? " (recommended)" : "")));
+      tr.append(el("td", { class: "n" }, `${r.found80} of ${r.hof}`));
+      tr.append(el("td", { class: "n" }, String(r.fa80)));
+      tr.append(el("td", { class: "n" + (r.prauc === bestPr ? " best" : "") }, r.prauc.toFixed(2)));
+      tbody.append(tr);
+    });
+  });
+}
+
+function renderValidation() {
+  const box = document.getElementById("validation");
+  box.replaceChildren();
+  DATA.validation.forEach(v => {
+    const chip = el("span", { class: "chip" });
+    const dot = el("i", { class: "" });
+    dot.style.cssText = `width:8px;height:8px;border-radius:50%;display:inline-block;background:${roleColor(v.role)}`;
+    chip.append(dot, el("span", {}, v.name), el("b", {}, fmtPct(v.score)), el("span", { class: "yr" }, `inducted ${v.year}`));
+    box.append(chip);
+  });
+  const legend = el("div", { class: "legend", style: "margin:14px 0 0" });
+  [["Hitter", "var(--hitter)"], ["Pitcher", "var(--pitcher)"]].forEach(([t, c]) => {
+    const s = el("span"); const i = el("i"); i.style.background = c; i.style.borderRadius = "50%"; s.append(i, document.createTextNode(t)); legend.append(s);
+  });
+  box.after(legend);
+}
+
+function roleCell(role) {
+  const td = el("td");
+  const span = el("span", { class: "role" });
+  const dot = el("i"); dot.style.background = roleColor(role);
+  span.append(dot, document.createTextNode(role));
+  td.append(span);
+  return td;
+}
+
+function renderWatch() {
+  const tbody = document.querySelector("#table-watch tbody");
+  tbody.replaceChildren();
+  DATA.watch.filter(w => w.score >= 0.75).forEach(w => {
+    const tr = el("tr");
+    tr.append(el("td", { class: "name" }, w.name), roleCell(w.role));
+    tr.append(el("td", { class: "n" }, fmtPct(w.score)), el("td", { class: "n muted" }, fmtPct(w.boost)));
+    const td = el("td");
+    if (w.vote_share !== null) {
+      const cell = el("div", { class: "meter-cell" });
+      const num = el("span", { class: "n", style: "font-variant-numeric:tabular-nums;text-align:right" }, w.vote_share.toFixed(1) + "%");
+      const meter = el("div", { class: "meter", role: "img", "aria-label": `${w.vote_share}% of the vote in ${w.vote_year}; 75% needed` });
+      const fill = el("div", { class: "fill" }); fill.style.width = Math.min(w.vote_share, 100) + "%"; fill.style.background = roleColor(w.role);
+      const mark = el("div", { class: "mark" }); mark.style.left = "calc(75% - 1px)";
+      meter.append(fill, mark);
+      cell.append(num, meter);
+      td.append(cell);
+      td.title = `${w.vote_share}% in ${w.vote_year}`;
+    } else {
+      td.append(el("span", { class: "muted" }, "Not yet on ballot"));
+    }
+    tr.append(td, el("td", { class: "n" }, String(w.ballots)));
+    tbody.append(tr);
+  });
+}
+
+/* ---------- future candidates (filtered) ---------- */
+const state = { role: "all", tier: "strong" };
+function filteredFuture() {
+  return DATA.future
+    .filter(d => state.role === "all" || d.role === state.role)
+    .filter(d => state.tier === "all" || d.score >= 0.8)
+    .sort((a, b) => b.score - a.score);
+}
+function statusText(d) { return d.active ? "Played in 2025" : `Last played ${d.last_year}`; }
+function keyStats(d) {
+  if (d.role === "Hitter") return `${fmtInt(d.stat1)} H · ${d.stat2} HR · ${d.stat3.toFixed(3).replace(/^0/, "")} AVG · ${d.awards} MVP`;
+  const sv = d.saves >= 100 ? ` · ${d.saves} SV` : "";
+  return `${d.stat1} W · ${fmtInt(d.stat2)} SO · ${d.stat3.toFixed(2)} ERA${sv} · ${d.awards} Cy Young`;
+}
+function renderFuture() {
+  const rows = filteredFuture();
+  hbar(document.getElementById("chart-future"),
+    rows.map(d => ({
+      label: d.name, value: d.score, color: roleColor(d.role),
+      extra: [`${d.role} · ${statusText(d)}`, keyStats(d), `Boosting score: ${fmtPct(d.boost)}`],
+    })),
+    { min: 0, max: 1, labelW: 150, rowH: 26, barH: 14, format: v => fmtPct(v), ticks: [0, 0.25, 0.5, 0.8, 1], tickFormat: t => fmtPct(t) });
+
+  const tbody = document.querySelector("#table-future tbody");
+  tbody.replaceChildren();
+  rows.forEach(d => {
+    const tr = el("tr");
+    tr.append(el("td", { class: "name" }, d.name), roleCell(d.role));
+    tr.append(el("td", { class: d.active ? "" : "muted" }, statusText(d)));
+    tr.append(el("td", { class: "n" }, String(d.seasons)), el("td", { style: "white-space:nowrap" }, keyStats(d)));
+    tr.append(el("td", { class: "n" }, String(d.allstar)));
+    tr.append(el("td", { class: "n best" }, fmtPct(d.score)), el("td", { class: "n muted" }, fmtPct(d.boost)));
+    const tierTd = el("td");
+    tierTd.append(el("span", { class: "pill" + (d.tier === "Strong candidate" ? " strong" : "") }, d.tier));
+    tr.append(tierTd);
+    tbody.append(tr);
+  });
+  document.getElementById("legend-future").hidden = state.role !== "all";
+}
+function wireSeg(id, key) {
+  document.getElementById(id).addEventListener("click", e => {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    state[key] = btn.dataset.value;
+    btn.parentElement.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === btn)));
+    renderFuture();
+  });
+}
+
+/* ---------- boot ---------- */
+function renderCharts() {
+  renderMilestones();
+  renderCoefs("chart-coef-h", DATA.coef_hitters, "var(--hitter)");
+  renderCoefs("chart-coef-p", DATA.coef_pitchers, "var(--pitcher)");
+  renderFuture();
+}
+renderKpis();
+renderModelTable();
+renderValidation();
+renderWatch();
+wireSeg("filter-role", "role");
+wireSeg("filter-tier", "tier");
+renderCharts();
+
+let lastWidth = document.querySelector(".wrap").clientWidth;
+new ResizeObserver(() => {
+  const w = document.querySelector(".wrap").clientWidth;
+  if (w !== lastWidth) { lastWidth = w; hideTip(); renderCharts(); }
+}).observe(document.querySelector(".wrap"));
+</script>
+</body>
+</html>
